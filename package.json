@@ -1,0 +1,18 @@
+{
+  "name": "wpt-validate-taskcluster",
+  "version": "1.0.0",
+  "description": "A script designed to compare CI results for the web-platform-tests project",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "octokit": "^1.0.0-hello-world",
+    "replay": "^2.3.0",
+    "yargs": "^12.0.2"
+  },
+  "private": true
+}
