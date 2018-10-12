@@ -2,13 +2,13 @@
 
 const path = require('path');
 
-const moment = require('moment');
 const Replay = require('replay');
 const yargs = require('yargs');
 
 const fetchPrsBetween = require('./fetch-prs-between');
 const getTravisCIResults = require('./get-travisci-results');
 const getTaskclusterResults = require('./get-taskcluster-results');
+const parseDateRange = require('./parse-date-range');
 
 Replay.mode = 'record';
 Replay.fixtures = path.join(__dirname, '..', 'fixtures');
@@ -16,22 +16,6 @@ Replay.fixtures = path.join(__dirname, '..', 'fixtures');
 // Omit token value from the recorded requests which are persisted to disk
 Replay.headers = Replay.headers
   .filter((pattern) => !pattern.test('authorization: token abcdef'));
-
-function parseDateRange(value) {
-  const dates = value.split(':');
-
-  if (dates.length !== 2) {
-    throw new Error('"between" argument must be two colon-separated dates');
-  }
-
-  return dates.map((dateStr) => {
-    const date = moment(dateStr);
-    if (!date.isValid()) {
-      throw new Error(`invalid date for "between": ${dateStr}`);
-    }
-    return date;
-  });
-}
 
 const argv = yargs
   .option('p', {
@@ -66,8 +50,8 @@ const argv = yargs
     prs.push(...await fetchPrsBetween(start, end));
   }
 
-  await Promise.all(prs.map(async (pr) => {
-    await Promise.all(pr.commits.map(async (commit) => {
+  await Promise.all(prs.map((pr) => {
+    return Promise.all(pr.commits.map(async (commit) => {
       commit.travisci = await getTravisCIResults(commit);
       commit.taskcluster = await getTaskclusterResults(commit);
     }));
@@ -84,6 +68,7 @@ const argv = yargs
   ].join(delimiter);
 
   console.log(heading);
+
   if (argv.format === 'markdown') {
     console.log(heading.replace(/[^|]/g, '-'));
   }
