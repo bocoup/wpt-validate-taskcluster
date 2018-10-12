@@ -49,23 +49,29 @@ const argv = yargs
   .argv;
 
 (async () => {
-  const prs = [];
+  const pullRequests = (await Promise.all(argv.between.map(([start, end]) => {
+      return fetchPrsBetween(start, end);
+    })))
+    // Flattern
+    .reduce((seenPrs, newPrs) => seenPrs.concat(newPrs), [])
+    // De-duplicate (in case of overlapping date ranges)
+    .filter((pr, _, allPrs) => {
+      return pr === allPrs.find((seenPr) => seenPr.number === pr.number);
+    });
+  const allCommits = pullRequests.reduce((seenCommits, pr) => {
+      pr.commits.forEach((commit) => commit.prNumber = pr.number);
+      return seenCommits.concat(pr.commits);
+    }, []);
 
-  (await Promise.all(argv.between.map(([start, end]) => {
-    return fetchPrsBetween(start, end);
-  }))).forEach((morePrs) => {
-    // Remove duplicates in case of over overlapping date ranges
-    morePrs
-      .filter((pr) => !prs.find((seen) => seen.number === pr.number))
-      .forEach((pr) => prs.push(pr));
-  });
-
-  await Promise.all(prs.map((pr) => {
-    return Promise.all(pr.commits.map(async (commit) => {
-      commit.travisci = await getTravisCIResults(commit);
-      commit.taskcluster = await getTaskclusterResults(commit);
-    }));
+  await Promise.all(allCommits.map(async (commit) => {
+    commit.travisci = await getTravisCIResults(commit);
+    commit.taskcluster = await getTaskclusterResults(commit);
   }));
+
+  const contestedCommits = allCommits.filter((commit) => {
+      return commit.travisci.chrome !== commit.taskcluster.chrome ||
+        commit.travisci.firefox !== commit.taskcluster.firefox;
+    });
 
   const delimiter = argv.format === 'csv' ? ',' : ' | ';
   const heading = [
@@ -83,22 +89,6 @@ const argv = yargs
     console.log(heading.replace(/[^|]/g, '-'));
   }
 
-  const allCommits = [];
-  const contestedCommits = [];
-
-  prs.forEach((pr) => {
-    pr.commits.forEach((commit) => {
-      commit.prNumber = pr.number;
-
-      allCommits.push(commit);
-
-      if (commit.travisci.chrome !== commit.taskcluster.chrome ||
-        commit.travisci.firefox !== commit.taskcluster.firefox) {
-        contestedCommits.push(commit);
-      }
-    });
-  });
-
   allCommits.forEach((commit) => {
     console.log([
       'http://github.com/web-platform-tests/wpt/pull/' + commit.prNumber,
@@ -113,7 +103,7 @@ const argv = yargs
   if (!argv.quiet) {
     console.log();
     console.log('Summary');
-    console.log('- Total pull requests: ' + prs.length);
+    console.log('- Total pull requests: ' + pullRequests.length);
     console.log('- Total commits:       ' + allCommits.length);
     console.log('- Contested commits:   ' + contestedCommits.length);
   }
