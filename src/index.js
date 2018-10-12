@@ -40,6 +40,11 @@ const argv = yargs
     default: 'csv',
     choices: ['csv', 'markdown']
   })
+  .option('q', {
+    alias: 'quiet',
+    type: 'boolean',
+    describe: 'omit summary'
+  })
   .strict()
   .argv;
 
@@ -73,16 +78,38 @@ const argv = yargs
     console.log(heading.replace(/[^|]/g, '-'));
   }
 
+  const allCommits = [];
+  const contestedCommits = [];
+
   prs.forEach((pr) => {
     pr.commits.forEach((commit) => {
-      console.log([
-        'http://github.com/web-platform-tests/wpt/pull/' + pr.number,
-        commit.sha,
-        commit.travisci.chrome,
-        commit.taskcluster.chrome,
-        commit.travisci.firefox,
-        commit.taskcluster.firefox
-      ].join(delimiter));
+      commit.prNumber = pr.number;
+
+      allCommits.push(commit);
+
+      if (commit.travisci.chrome !== commit.taskcluster.chrome ||
+        commit.travisci.firefox !== commit.taskcluster.firefox) {
+        contestedCommits.push(commit);
+      }
     });
   });
+
+  allCommits.forEach((commit) => {
+    console.log([
+      'http://github.com/web-platform-tests/wpt/pull/' + commit.prNumber,
+      commit.sha,
+      commit.travisci.chrome,
+      commit.taskcluster.chrome,
+      commit.travisci.firefox,
+      commit.taskcluster.firefox
+    ].join(delimiter));
+  });
+
+  if (!argv.quiet) {
+    console.log();
+    console.log('Summary');
+    console.log('- Total pull requests: ' + prs.length);
+    console.log('- Total commits:       ' + allCommits.length);
+    console.log('- Contested commits:   ' + contestedCommits.length);
+  }
 })();
