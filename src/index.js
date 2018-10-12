@@ -2,6 +2,7 @@
 
 const path = require('path');
 
+const Progress = require('progress');
 const Replay = require('replay');
 const yargs = require('yargs');
 
@@ -48,9 +49,28 @@ const argv = yargs
   .strict()
   .argv;
 
+const progressBars = {};
+
 (async () => {
+  if (!argv.silent) {
+    progressBars.pullRequests = new Progress(
+      'fetching pull requests (step 1/2)... [:bar] :percent :etas',
+      {
+          total: argv.between.length,
+          width: 20,
+          incomplete: ' '
+      }
+    );
+  }
+
   const pullRequests = (await Promise.all(argv.between.map(([start, end]) => {
-      return fetchPrsBetween(start, end);
+      return fetchPrsBetween(start, end)
+        .then((prs) => {
+          if (!argv.silent) {
+            progressBars.pullRequests.tick();
+          }
+          return prs;
+        });
     })))
     // Flattern
     .reduce((seenPrs, newPrs) => seenPrs.concat(newPrs), [])
@@ -63,11 +83,26 @@ const argv = yargs
       return seenCommits.concat(pr.commits);
     }, []);
 
+  if (!argv.silent) {
+    progressBars.statuses = new Progress(
+      'fetching statuses (step 2/2)... [:bar] :percent :etas',
+      {
+        total: allCommits.length,
+        width: 20,
+        incomplete: ' '
+      }
+    );
+  }
+
   await Promise.all(allCommits.map(async (commit) => {
     const [ travisci, taskcluster ] = await Promise.all([
       getTravisCIResults(commit),
       await getTaskclusterResults(commit)
     ]);
+
+    if (!argv.quiet) {
+      progressBars.statuses.tick();
+    }
 
     Object.assign(commit, { travisci, taskcluster });
   }));
