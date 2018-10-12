@@ -51,9 +51,14 @@ const argv = yargs
 (async () => {
   const prs = [];
 
-  for (const [start, end] of argv.between) {
-    prs.push(...await fetchPrsBetween(start, end));
-  }
+  (await Promise.all(argv.between.map(([start, end]) => {
+    return fetchPrsBetween(start, end);
+  }))).forEach((morePrs) => {
+    // Remove duplicates in case of over overlapping date ranges
+    morePrs
+      .filter((pr) => !prs.find((seen) => seen.number === pr.number))
+      .forEach((pr) => prs.push(pr));
+  });
 
   await Promise.all(prs.map((pr) => {
     return Promise.all(pr.commits.map(async (commit) => {
