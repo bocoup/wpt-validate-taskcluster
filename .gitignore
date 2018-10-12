@@ -1,3 +1,4 @@
 /node_modules/
 /fixtures/
-/github-token.txt
+/token-github.txt
+/token-travisci.txt
