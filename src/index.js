@@ -64,8 +64,12 @@ const argv = yargs
     }, []);
 
   await Promise.all(allCommits.map(async (commit) => {
-    commit.travisci = await getTravisCIResults(commit);
-    commit.taskcluster = await getTaskclusterResults(commit);
+    const [ travisci, taskcluster ] = await Promise.all([
+      getTravisCIResults(commit),
+      await getTaskclusterResults(commit)
+    ]);
+
+    Object.assign(commit, { travisci, taskcluster });
   }));
 
   const contestedCommits = allCommits.filter((commit) => {
