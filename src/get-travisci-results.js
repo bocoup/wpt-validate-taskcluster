@@ -20,10 +20,27 @@ module.exports = async function getTravisCIResults(commit) {
 
   (await travisciClient.getBuild(buildId))
     .jobs
-    .filter((job) => /stability/i.test(job.config.name))
+    .map((job) => {
+      const state = job.state;
+      let id;
+
+      // The designator for TravisCI jobs was updated on 2018-10-02:
+      // https://github.com/web-platform-tests/wpt/pull/13300
+      if (/stability/i.test(job.config.name)) {
+        id = job.config.name;
+      } else if (/stability/i.test(job.config.env)) {
+        id = job.config.env;
+      } else {
+        return null;
+      }
+
+      job.browser = id.match(/firefox|chrome/i)[0].toLowerCase();
+
+      return job;
+    })
+    .filter((job) => !!job)
     .forEach((job) => {
-      const browser = /firefox/i.test(job.config.name) ? 'firefox' : 'chrome';
-      results[browser] = job.state === 'passed' ? 'PASS' : 'FAIL';
+      results[job.browser] = job.state === 'passed' ? 'PASS' : 'FAIL';
     });
 
   return results;
