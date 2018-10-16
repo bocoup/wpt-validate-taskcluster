@@ -10,6 +10,7 @@ const fetchPrsBetween = require('./fetch-prs-between');
 const getTravisCIResults = require('./get-travisci-results');
 const getTaskclusterResults = require('./get-taskcluster-results');
 const parseDateRange = require('./parse-date-range');
+const renderTable = require('./render-table');
 
 Replay.mode = 'record';
 Replay.fixtures = path.join(__dirname, '..', 'fixtures');
@@ -127,38 +128,30 @@ const progressBars = {};
       })
   };
 
-  const delimiter = argv.format === 'csv' ? ',' : ' | ';
-  const heading = [
+  const headings = [
     'pull request URL',
     'commit',
     'TravisCI: Chrome',
     'Taskcluster: Chrome',
     'TravisCI: Firefox',
     'Taskcluster: Firefox'
-  ].join(delimiter);
+  ];
+  const data = allCommits
+    .filter((commit) => {
+        return !(argv.discrepancies &&
+          commit.travisci.chrome === commit.taskcluster.chrome &&
+          commit.travisci.firefox === commit.taskcluster.firefox);
+      })
+    .map((commit) => [
+        'http://github.com/web-platform-tests/wpt/pull/' + commit.prNumber,
+        commit.sha,
+        commit.travisci.chrome,
+        commit.taskcluster.chrome,
+        commit.travisci.firefox,
+        commit.taskcluster.firefox
+      ]);
 
-  console.log(heading);
-
-  if (argv.format === 'markdown') {
-    console.log(heading.replace(/[^|]/g, '-'));
-  }
-
-  allCommits.forEach((commit) => {
-    if (argv.discrepancies &&
-      commit.travisci.chrome === commit.taskcluster.chrome &&
-      commit.travisci.firefox === commit.taskcluster.firefox) {
-      return;
-    }
-
-    console.log([
-      'http://github.com/web-platform-tests/wpt/pull/' + commit.prNumber,
-      commit.sha,
-      commit.travisci.chrome,
-      commit.taskcluster.chrome,
-      commit.travisci.firefox,
-      commit.taskcluster.firefox
-    ].join(delimiter));
-  });
+  console.log(renderTable(argv.format, headings, data));
 
   if (!argv.quiet) {
     console.log();
