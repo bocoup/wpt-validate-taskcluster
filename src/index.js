@@ -106,11 +106,26 @@ const progressBars = {};
 
     Object.assign(commit, { travisci, taskcluster });
   }));
-
-  const contestedCommits = allCommits.filter((commit) => {
-      return commit.travisci.chrome !== commit.taskcluster.chrome ||
-        commit.travisci.firefox !== commit.taskcluster.firefox;
+  const testedCommits = allCommits
+    .filter((commit) => {
+      return commit.travisci.firefox || commit.travisci.chrome ||
+        commit.taskcluster.firefox || commit.taskcluster.chrome;
     });
+
+  const contestedCommits = {
+    both: testedCommits.filter((commit) => {
+        return commit.travisci.chrome !== commit.taskcluster.chrome &&
+          commit.travisci.firefox !== commit.taskcluster.firefox;
+      }),
+    chrome: testedCommits.filter((commit) => {
+        return commit.travisci.chrome !== commit.taskcluster.chrome &&
+          commit.travisci.firefox === commit.taskcluster.firefox;
+      }),
+    firefox: testedCommits.filter((commit) => {
+        return commit.travisci.chrome === commit.taskcluster.chrome &&
+          commit.travisci.firefox !== commit.taskcluster.firefox;
+      })
+  };
 
   const delimiter = argv.format === 'csv' ? ',' : ' | ';
   const heading = [
@@ -142,8 +157,11 @@ const progressBars = {};
   if (!argv.quiet) {
     console.log();
     console.log('Summary');
-    console.log('- Total pull requests: ' + pullRequests.length);
-    console.log('- Total commits:       ' + allCommits.length);
-    console.log('- Contested commits:   ' + contestedCommits.length);
+    console.log('- Total pull requests:         ' + pullRequests.length);
+    console.log('- Total commits:               ' + allCommits.length);
+    console.log('- Tested commits:              ' + testedCommits.length);
+    console.log('- Contested commits (Chrome):  ' + contestedCommits.chrome.length);
+    console.log('- Contested commits (Firefox): ' + contestedCommits.firefox.length);
+    console.log('- Contested commits (both):    ' + contestedCommits.both.length);
   }
 })();
