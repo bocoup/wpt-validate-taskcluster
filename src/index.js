@@ -19,11 +19,6 @@ Replay.headers = Replay.headers
   .filter((pattern) => !pattern.test('authorization: token abcdef'));
 
 const argv = yargs
-  .option('p', {
-    alias: 'pull-request',
-    describe: 'pull request number',
-    type: 'number'
-  })
   .option('b', {
     alias: 'between',
     default: function none() { return []; },
