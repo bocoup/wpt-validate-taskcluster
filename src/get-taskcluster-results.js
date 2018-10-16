@@ -4,13 +4,34 @@ const url = require('url');
 
 const get = require('./http-get');
 
-module.exports = async function addTaskcluster(commit) {
-  const status = commit.statuses
-    .filter((status) => /Taskcluster/.test(status.context))
-    .filter((status) => status.state !== 'pending')
-    .reverse()[0];
+const descPattern = /pull_request\.(opened|synchronize)/i;
 
+// Prior to [1], Taskcluster was configured to respond to many irrelevant
+// GitHub events. The validation results created in response to those events
+// should not be considered for correctness. For a given commit, the "relevant"
+// status can be identified by first locating the "pending" status that was
+// created when the pull request was opened or when a new commit was added. The
+// "target_url" of that status will be shared by some other non-pending status;
+// that is the status which describes the result.
+//
+// [1] https://github.com/web-platform-tests/wpt/pull/13552
+function findRelevant(statuses) {
+  const initialStatus = statuses
+    .filter((status) => /taskcluster/i.test(status.context))
+    .find((status) => descPattern.test(status.description));
+
+  if (!initialStatus) {
+    return null;
+  }
+
+  return statuses
+    .filter((status) => status.state !== 'pending')
+    .find((status) => status.target_url === initialStatus.target_url);
+}
+
+module.exports = async function addTaskcluster(commit) {
   const results = { firefox: null, chrome: null };
+  const status = findRelevant(commit.statuses);
 
   if (!status) {
     return results;
