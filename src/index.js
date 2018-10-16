@@ -36,6 +36,11 @@ const argv = yargs
     default: 'csv',
     choices: ['csv', 'markdown']
   })
+  .option('x', {
+    alias: 'discrepancies',
+    type: 'boolean',
+    describe: 'only output details on discrepancies between TravisCI and Taskcluster'
+  })
   .option('q', {
     alias: 'quiet',
     type: 'boolean',
@@ -139,6 +144,12 @@ const progressBars = {};
   }
 
   allCommits.forEach((commit) => {
+    if (argv.discrepancies &&
+      commit.travisci.chrome === commit.taskcluster.chrome &&
+      commit.travisci.firefox === commit.taskcluster.firefox) {
+      return;
+    }
+
     console.log([
       'http://github.com/web-platform-tests/wpt/pull/' + commit.prNumber,
       commit.sha,
