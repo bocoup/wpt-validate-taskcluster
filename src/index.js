@@ -53,7 +53,7 @@ const argv = yargs
 const progressBars = {};
 
 (async () => {
-  if (!argv.silent) {
+  if (!argv.quiet) {
     progressBars.pullRequests = new Progress(
       'fetching pull requests (step 1/2)... [:bar] :percent :etas',
       {
@@ -67,7 +67,7 @@ const progressBars = {};
   const pullRequests = (await Promise.all(argv.between.map(([start, end]) => {
       return fetchPrsBetween(start, end)
         .then((prs) => {
-          if (!argv.silent) {
+          if (!argv.quiet) {
             progressBars.pullRequests.tick();
           }
           return prs;
@@ -84,7 +84,7 @@ const progressBars = {};
       return seenCommits.concat(pr.commits);
     }, []);
 
-  if (!argv.silent) {
+  if (!argv.quiet) {
     progressBars.statuses = new Progress(
       'fetching statuses (step 2/2)... [:bar] :percent :etas',
       {
