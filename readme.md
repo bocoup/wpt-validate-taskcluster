@@ -2,7 +2,11 @@
 
 ## Requirements
 
-- Node.js version 8 or later
+- Node.js version 8 (Due to [a bug in one of this project's
+  dependencies](https://github.com/assaf/node-replay/issues/155), HTTP request
+  memoization does not work in Node.js version 10. The script will return
+  accurate results, but repeated invocations may exceed HTTP API request
+  limits.)
 - A free user account on GitHub.com
 - A free user account on TravisCI.com
 
