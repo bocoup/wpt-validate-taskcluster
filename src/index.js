@@ -80,7 +80,7 @@ const progressBars = {};
       return pr === allPrs.find((seenPr) => seenPr.number === pr.number);
     });
   const allCommits = pullRequests.reduce((seenCommits, pr) => {
-      pr.commits.forEach((commit) => commit.prNumber = pr.number);
+      pr.commits.forEach((commit) => commit.pr = pr);
       return seenCommits.concat(pr.commits);
     }, []);
 
@@ -130,6 +130,7 @@ const progressBars = {};
 
   const headings = [
     'pull request URL',
+    'pull request author',
     'commit',
     'TravisCI: Chrome',
     'Taskcluster: Chrome',
@@ -143,7 +144,8 @@ const progressBars = {};
           commit.travisci.firefox === commit.taskcluster.firefox);
       })
     .map((commit) => [
-        'http://github.com/web-platform-tests/wpt/pull/' + commit.prNumber,
+        'http://github.com/web-platform-tests/wpt/pull/' + commit.pr.number,
+        commit.pr.user.login,
         commit.sha,
         commit.travisci.chrome,
         commit.taskcluster.chrome,
