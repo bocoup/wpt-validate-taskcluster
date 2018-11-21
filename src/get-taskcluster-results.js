@@ -2,9 +2,17 @@
 
 const url = require('url');
 
+const moment = require('moment');
+
 const get = require('./http-get');
 
 const descPattern = /pull_request\.(opened|synchronize)/i;
+// At this time, the Taskcluster configuration was modified so that the result
+// of the task could influence the pull request review process. The change also
+// affects how task statuses should be interpreted.
+//
+// https://github.com/web-platform-tests/wpt/pull/14096
+const momentEnforced = moment('2018-11-16T17:03:00Z');
 
 // Prior to [1], Taskcluster was configured to respond to many irrelevant
 // GitHub events. The validation results created in response to those events
@@ -47,6 +55,18 @@ module.exports = async function addTaskcluster(commit) {
     if (!match) {
       continue;
     }
+
+    if (moment(status.created_at).isAfter(momentEnforced)) {
+      if (task.status.state === 'completed') {
+        results[match[1]] = 'PASS';
+      } else if (task.status.state === 'failed') {
+        results[match[1]] = 'FAIL';
+      } else {
+        results[match[1]] = task.status.state.toUpperCase();
+      }
+      continue;
+    }
+
     const artifactUrl =
       `https://queue.taskcluster.net/v1/task/${task.status.taskId}/artifacts`;
     const artifacts = JSON.parse(await get(artifactUrl));

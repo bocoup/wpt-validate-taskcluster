@@ -40,7 +40,13 @@ module.exports = async function getTravisCIResults(commit) {
     })
     .filter((job) => !!job)
     .forEach((job) => {
-      results[job.browser] = job.state === 'passed' ? 'PASS' : 'FAIL';
+      let result;
+      if (job.state === 'errored') {
+        result = 'ERROR';
+      } else {
+        result = job.state === 'passed' ? 'PASS' : 'FAIL';
+      }
+      results[job.browser] = result;
     });
 
   return results;
